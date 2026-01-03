@@ -1,0 +1,39 @@
+name: Build and Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.*'
+
+      - name: Build Plugin
+        run: dotnet publish --configuration Release --output bin/publish
+
+      - name: Create Zip
+        run: |
+          cd bin/publish
+          zip -r ../../DownloadMonitor.zip .
+          cd ../..
+
+      - name: JPRM (Generate Manifest)
+        uses: oddstr13/jellyfin-plugin-repository-manager@v2
+        with:
+          path: '.' 
+          zip: 'DownloadMonitor.zip'
+          url: 'https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status'
+          branch: 'gh-pages'
+          token: ${{ secrets.GITHUB_TOKEN }}
