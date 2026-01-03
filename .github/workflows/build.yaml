@@ -5,7 +5,6 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -22,17 +21,41 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
-      - name: Get Version from Tag
-        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+      - name: Restore dependencies
+        run: dotnet restore
 
       - name: Build Release
-        run: dotnet publish Jellyfin.Plugin.DownloadMonitor/Jellyfin.Plugin.DownloadMonitor.csproj --configuration Release --output bin/publish /p:Version=${{ env.VERSION }} /p:AssemblyVersion=${{ env.VERSION }}
+        run: dotnet build Jellyfin.Plugin.DownloadMonitor/Jellyfin.Plugin.DownloadMonitor.csproj --configuration Release --no-restore
 
-      - name: Download JPRM Tool directly
+      - name: Create plugin zip
         run: |
-          wget https://github.com/oddstr13/jellyfin-plugin-repository-manager/releases/download/v0.5.0/jprm-linux-x64 -O jprm
-          chmod +x jprm
+          mkdir -p artifacts
+          cd Jellyfin.Plugin.DownloadMonitor/bin/Release/net9.0
+          zip -r ../../../../artifacts/download-monitor-${{ github.ref_name }}.zip *.dll
 
-      - name: Create Repo and Deploy
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: artifacts/*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install JPRM via Pip
+        # Dit is de eerste optie uit jouw screenshot ("From PyPI")
+        # Dit is de meest veilige en officiële manier.
+        run: pip install jprm
+
+      - name: Create Manifest and Deploy
         run: |
-          ./jprm repo bin/publish --url https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status --token ${{ secrets.GITHUB_TOKEN }} --branch gh-pages
+          # Het commando is nu beschikbaar omdat we het via pip hebben geïnstalleerd
+          jprm repo artifacts \
+            --url https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status \
+            --branch gh-pages \
+            --token ${{ secrets.GITHUB_TOKEN }}
