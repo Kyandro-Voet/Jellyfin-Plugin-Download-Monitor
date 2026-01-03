@@ -26,7 +26,7 @@ jobs:
         run: dotnet publish Jellyfin.Plugin.DownloadMonitor/Jellyfin.Plugin.DownloadMonitor.csproj --configuration Release --output bin/publish
 
       - name: Install JPRM Tool
-        run: dotnet tool install --global Jellyfin.Plugin.Repository.Manager
+        run: dotnet tool install --global Jprm
 
       - name: Create Repo and Deploy
         run: |
@@ -37,4 +37,4 @@ jobs:
           # 1. Zipt je bestanden
           # 2. Maakt de manifest.json
           # 3. Pusht het naar de 'gh-pages' branch
-          jprm --url https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status --token ${{ secrets.GITHUB_TOKEN }} --branch gh-pages --path bin/publish
+          jprm repo bin/publish --url https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status --token ${{ secrets.GITHUB_TOKEN }} --branch gh-pages
