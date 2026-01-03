@@ -4,30 +4,40 @@ on:
   push:
     tags:
       - 'v*'
-    branches:
-      - main
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     permissions:
       contents: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x' 
-      - name: Fix NuGet Sources
-        run: dotnet nuget add source https://api.nuget.org/v3/index.json -n nuget.org || true
+          dotnet-version: '9.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore
+
       - name: Build Release
-        run: dotnet publish Jellyfin.Plugin.DownloadMonitor/Jellyfin.Plugin.DownloadMonitor.csproj --configuration Release --output bin/publish
-      - name: Install JPRM Tool
-        run: dotnet tool install --global Jellyfin.Plugin.Repository.Manager --ignore-failed-sources
-      - name: Create Repo and Deploy
+        run: dotnet build Jellyfin.Plugin.DownloadMonitor/Jellyfin.Plugin.DownloadMonitor.csproj --configuration Release --no-restore
+
+      - name: Create plugin zip
         run: |
-          # Zorg dat Linux het commando 'jprm' kan vinden
-          export PATH="$PATH:$HOME/.dotnet/tools"
-          
-          # Stap 4: Voer 'jprm' uit om alles te regelen
-          jprm repo bin/publish --url https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status --token ${{ secrets.GITHUB_TOKEN }} --branch gh-pages
+          mkdir -p artifacts
+          cd Jellyfin.Plugin.DownloadMonitor/bin/Release/net9.0
+          zip -r ../../../../artifacts/download-monitor-${{ github.ref_name }}.zip *.dll
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: artifacts/*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
