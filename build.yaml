@@ -1,7 +1,7 @@
 ---
 name: "Download Monitor"
 guid: "4344669f-555b-4525-b86f-d66dbb9ae81b"
-version: "0.1.0.6"
+version: "0.1.0.7"
 targetAbi: "10.11.0.0"
 framework: "net9.0"
 overview: "Monitor and display Radarr download progress in Jellyfin"

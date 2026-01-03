@@ -65,7 +65,7 @@ jobs:
           # Initialiseer repo als manifest.json mist (eerste keer)
           if [ ! -f repo_dir/manifest.json ]; then
             echo "Initialising new repo..."
-            jprm repo init repo_dir --url https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status
+            jprm repo init repo_dir
           fi
 
           # Voeg de nieuwe zip toe (dit update de manifest.json)
