@@ -10,7 +10,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     
-    # Geeft toestemming om bestanden te uploaden naar GitHub Pages
     permissions:
       contents: write
 
@@ -21,14 +20,12 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x' # Pas aan naar 9.0.x als je Jellyfin 10.10+ gebruikt
+          dotnet-version: '9.0.x'
 
       - name: Build Release
-        # Bouwt de DLL in Release modus
-        run: dotnet publish --configuration Release --output bin/publish
+        run: dotnet publish Jellyfin.Plugin.DownloadMonitor/Jellyfin.Plugin.DownloadMonitor.csproj --configuration Release --output bin/publish
 
       - name: Install JPRM Tool
-        # We installeren de tool direct, dit werkt altijd (geen version errors meer)
         run: dotnet tool install --global Jellyfin.Plugin.Repository.Manager
 
       - name: Create Repo and Deploy
