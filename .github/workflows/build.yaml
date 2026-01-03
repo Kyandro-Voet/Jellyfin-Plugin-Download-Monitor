@@ -31,7 +31,7 @@ jobs:
         run: |
           mkdir -p artifacts
           cd Jellyfin.Plugin.DownloadMonitor/bin/Release/net9.0
-          zip -r ../../../../artifacts/download-monitor-${{ github.ref_name }}.zip *.dll
+          zip -j ../../../../artifacts/download-monitor-${{ env.VERSION }}.zip Jellyfin.Plugin.DownloadMonitor.dll
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -59,17 +59,13 @@ jobs:
 
       - name: Update Jellyfin Repo
         run: |
-          # Maak map als die nog niet bestaat
           mkdir -p repo_dir
 
-          # Initialiseer repo als manifest.json mist (eerste keer)
           if [ ! -f repo_dir/manifest.json ]; then
             echo "Initialising new repo..."
             jprm repo init repo_dir
           fi
 
-          # Voeg de nieuwe zip toe (dit update de manifest.json)
-          # Commando: jprm repo add --url <URL> <REPO_DIR> <ZIP_FILE>
           jprm repo add --url https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status repo_dir artifacts/*.zip
 
       - name: Deploy to GitHub Pages
