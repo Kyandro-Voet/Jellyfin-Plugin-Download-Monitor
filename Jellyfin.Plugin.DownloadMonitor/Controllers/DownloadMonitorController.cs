@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -99,6 +100,17 @@ namespace Jellyfin.Plugin.DownloadMonitor.Controllers
             if (config == null || string.IsNullOrEmpty(config.RadarrUrl) || string.IsNullOrEmpty(config.RadarrApiKey))
             {
                 return Ok(new { records = Array.Empty<object>() });
+            }
+
+            var commandUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/command?apikey={config.RadarrApiKey}";
+            try
+            {
+                var commandJson = "{\"name\":\"RefreshMonitoredDownloads\"}";
+                var content = new StringContent(commandJson, Encoding.UTF8, "application/json");
+                await HttpClient.PostAsync(commandUrl, content).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
             }
 
             var requestUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/queue?apikey={config.RadarrApiKey}";

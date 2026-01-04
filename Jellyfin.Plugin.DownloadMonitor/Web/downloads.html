@@ -23,6 +23,11 @@
             max-width: 60%;
             margin: 0 auto;
         }
+        @media (max-width: 720px) {
+            .verminderBreedte {
+                max-width: 95%;
+            }
+        }
         .download-progress-background {
             background-color: rgba(255, 255, 255, 0.1);
             height: 4px;
@@ -50,20 +55,24 @@
 
             async function fetchDownloads() {
                 if (!container) return;
-
-                try {
+                while (document.body.contains(page)){
+                    try {
                     const response = await fetch('/Plugins/DownloadMonitor/Downloads');
-                    if (response.ok) {
-                        const data = await response.json();
-                        // Support voor zowel {records: []} als {queue: []} formaten
-                        renderDownloads(data.records || data.queue || []);
-                    } else {
-                        renderError();
-                    }
-                } catch (err) {
+                        if (response.ok) {
+                            const data = await response.json();
+                            // Support voor zowel {records: []} als {queue: []} formaten
+                            renderDownloads(data.records || data.queue || []);
+                        } else {
+                            renderError();
+                        }
+                    } catch (err) {
                     console.error('[DownloadMonitor] Error fetching downloads:', err);
                     renderError();
+                    }
+
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
+
             }
 
             function renderError() {
