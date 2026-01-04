@@ -45,7 +45,7 @@ jobs:
             "owner": "Kyandro",
             "overview": "Monitor and display Radarr download progress in Jellyfin",
             "version": "${{ env.VERSION }}",
-            "changelog": "Initial release",
+            "changelog": "See GitHub Releases for changes in v${{ env.VERSION }}",
             "targetAbi": "10.11.0.0",
             "sourceUrl": "https://github.com/kyandro-voet/Jellyfin-Plugin-Download-Status/releases/download/v${{ env.VERSION }}/download-monitor-${{ env.VERSION }}.zip",
             "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"

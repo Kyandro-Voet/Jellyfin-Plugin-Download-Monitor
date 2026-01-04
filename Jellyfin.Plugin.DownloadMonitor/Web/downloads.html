@@ -63,7 +63,7 @@
                     const response = await fetch('/Plugins/DownloadMonitor/Downloads');
                         if (response.ok) {
                             const data = await response.json();
-                            
+
                             if (data.refreshInterval) {
                                 refreshInterval = data.refreshInterval;
                             }
@@ -95,23 +95,29 @@
                     return;
                 }
 
-                const html = items.map(item => {
+                const sortedItems = items.map(item => {
                     const title = item.title || "Unknown";
                     const status = item.status || "Unknown";
-                    const total = item.size || 1;
-                    const left = item.sizeleft || 0;
-                    // Voorkom delen door nul
-                    const progress = total > 0 ? Math.round(((total - left) / total) * 100) : 0;
+                    const total = Number(item.size) || 0;
+                    const left = Number(item.sizeleft) || 0;
 
+                    item.progress = total > 0 ? Math.round(((total - left) / total) * 100) : 0;
+                    if(total === 0)
+                        progress = 0;
+                    return item;
+
+                }).sort((a, b) => b.progress - a.progress);
+
+                const html = sortedItems.map(item => {
                     return `
                         <div class="listItem listItem-border">
                             <div class="listItemBody">
-                                <div class="listItemBodyText">${title}</div>
+                                <div class="listItemBodyText">${item.title}</div>
                                 <div class="listItemBodyText secondary">
-                                    ${status} &bull; ${progress}%
+                                    ${item.status || "Unknown"} &bull; ${item.progress}%
                                 </div>
                                 <div class="download-progress-background">
-                                    <div class="download-progress-value" style="width: ${progress}%"></div>
+                                    <div class="download-progress-value" style="width: ${item.progress}%"></div>
                                 </div>
                             </div>
                         </div>

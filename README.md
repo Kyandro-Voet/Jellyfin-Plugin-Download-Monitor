@@ -27,7 +27,7 @@ A Jellyfin plugin that adds a **Downloads** menu item to the sidebar, allowing y
 For automatic script injection, first install the File Transformation plugin:
 
 1. Go to **Dashboard** → **Plugins** → **Manage Repositories** → **New Repository**
-2. Add https://www.iamparadox.dev/jellyfin/plugins/manifest.json and https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Status/manifest.json
+2. Add https://www.iamparadox.dev/jellyfin/plugins/manifest.json and https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Monitor/manifest.json
 3. Search and install "File Transformation" in the catalog
 4. Search and install "Download Monitor" in the catalog
 5. Restart Jellyfin
