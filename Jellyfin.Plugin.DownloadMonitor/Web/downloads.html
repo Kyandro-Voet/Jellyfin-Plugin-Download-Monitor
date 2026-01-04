@@ -55,11 +55,19 @@
 
             async function fetchDownloads() {
                 if (!container) return;
+
+                let refreshInterval = 2000;
+
                 while (document.body.contains(page)){
                     try {
                     const response = await fetch('/Plugins/DownloadMonitor/Downloads');
                         if (response.ok) {
                             const data = await response.json();
+                            
+                            if (data.refreshInterval) {
+                                refreshInterval = data.refreshInterval;
+                            }
+
                             // Support voor zowel {records: []} als {queue: []} formaten
                             renderDownloads(data.records || data.queue || []);
                         } else {
@@ -70,7 +78,7 @@
                     renderError();
                     }
 
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    await new Promise(resolve => setTimeout(resolve, refreshInterval));
                 }
 
             }

@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Text;
+using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -121,6 +122,22 @@ namespace Jellyfin.Plugin.DownloadMonitor.Controllers
                 if (response.IsSuccessStatusCode)
                 {
                     var jsonString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                    try
+                    {
+                        var node = JsonNode.Parse(jsonString);
+                        if (node != null)
+                        {
+                            // Inject refresh interval in milliseconds
+                            node["refreshInterval"] = config.RefreshInterval * 1000;
+                            return Content(node.ToJsonString(), "application/json");
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore parsing errors and return original JSON
+                    }
+
                     return Content(jsonString, "application/json");
                 }
 
