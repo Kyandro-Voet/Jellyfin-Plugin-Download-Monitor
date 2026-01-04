@@ -4,60 +4,71 @@
     let retryCount = 0;
     const MAX_RETRIES = 30;
 
-    // --- HELPER 1: Sluit het menu ---
+    // --- HELPER 1: URL Parameter Checker ---
+    function isDownloadPage() {
+        return window.location.hash.includes('view=downloadmonitor');
+    }
+
+    // --- HELPER 2: Sluit het menu ---
     function closeDrawer() {
         const backdrop = document.querySelector('.mainDrawer-backdrop');
-        if (backdrop) {
-            backdrop.click();
-        }
+        if (backdrop) backdrop.click();
 
         document.body.classList.remove('mainDrawer-open');
         const drawer = document.querySelector('.mainDrawer');
-        if (drawer) {
-            drawer.classList.remove('mainDrawer-open');
-        }
+        if (drawer) drawer.classList.remove('mainDrawer-open');
     }
 
-    // --- HELPER 2: Herstel de andere pagina's (GECORRIGEERD) ---
-    function restoreJellyfinViews() {
+    // --- HELPER 3: Schakel tussen Jellyfin Home en Onze Page ---
+    function toggleViews() {
         const viewContainer = document.querySelector('.mainAnimatedPages');
         if (!viewContainer) return;
 
-        const pages = viewContainer.querySelectorAll('.mainAnimatedPage');
-        pages.forEach(p => {
-            if (p.id !== 'downloadMonitorPage') {
-                // VERWIJDERD: p.classList.remove('hide');
-                // We halen alleen onze geforceerde style weg.
-                // Jellyfin bepaalt zelf wel of er een 'hide' class op moet blijven staan.
-                p.style.display = '';
-                p.removeAttribute('aria-hidden');
+        const myPage = document.getElementById('downloadMonitorPage');
+        const jellyfinPages = viewContainer.querySelectorAll('.mainAnimatedPage');
+
+        if (isDownloadPage()) {
+            // ---> We zijn op de Download Pagina
+
+            // 1. Forceer ALLES anders onzichtbaar met inline styles
+            // Dit is veiliger dan classes weghalen/toevoegen
+            jellyfinPages.forEach(p => {
+                if (p.id !== 'downloadMonitorPage') {
+                    p.style.display = 'none';
+                    p.setAttribute('aria-hidden', 'true');
+                }
+            });
+
+            // 2. Toon onze pagina
+            if (myPage) {
+                myPage.style.display = 'block';
+                myPage.removeAttribute('aria-hidden');
+            } else {
+                loadDownloadsHtml(viewContainer);
             }
-        });
+
+        } else {
+            // ---> We zijn op een normale Jellyfin pagina (Home, Movies, etc.)
+
+            // 1. Verberg onze pagina
+            if (myPage) {
+                myPage.style.display = 'none';
+                myPage.setAttribute('aria-hidden', 'true');
+            }
+
+            // 2. HERSTEL de andere pagina's
+            // We halen onze geforceerde 'none' weg.
+            // Als Jellyfin de pagina zelf verborgen wil houden (met class 'hide'), blijft hij nu verborgen!
+            jellyfinPages.forEach(p => {
+                if (p.id !== 'downloadMonitorPage') {
+                    p.style.display = '';
+                    // We raken aria-hidden niet aan, dat doet Jellyfin zelf
+                }
+            });
+        }
     }
 
-    function loadDownloadsPage() {
-        closeDrawer();
-
-        const viewContainer = document.querySelector('.mainAnimatedPages');
-        if (!viewContainer) return;
-
-        // 1. Verberg huidige pagina's (Override Jellyfin)
-        const pages = viewContainer.querySelectorAll('.mainAnimatedPage');
-        pages.forEach(p => {
-            // We forceren ze onzichtbaar zolang WIJ actief zijn
-            p.style.display = 'none';
-            p.setAttribute('aria-hidden', 'true');
-        });
-
-        // 2. Check of pagina al bestaat
-        const existingPage = document.getElementById('downloadMonitorPage');
-        if (existingPage) {
-            existingPage.style.display = 'block';
-            existingPage.removeAttribute('aria-hidden');
-            return;
-        }
-
-        // 3. Pagina bouwen
+    function loadDownloadsHtml(container) {
         fetch('/Plugins/DownloadMonitor/Page')
             .then(response => response.text())
             .then(html => {
@@ -68,9 +79,11 @@
                 if (newPage) {
                     newPage.id = 'downloadMonitorPage';
                     newPage.classList.add('mainAnimatedPage', 'libraryPage', 'page', 'type-interior');
-                    newPage.style.display = 'block';
 
-                    viewContainer.appendChild(newPage);
+                    // Zorg dat hij standaard verborgen is tot toggleViews draait
+                    newPage.style.display = 'none';
+
+                    container.appendChild(newPage);
 
                     const scripts = newPage.querySelectorAll('script');
                     scripts.forEach(oldScript => {
@@ -78,6 +91,9 @@
                         newScript.textContent = oldScript.textContent;
                         oldScript.parentNode.replaceChild(newScript, oldScript);
                     });
+
+                    // Check direct de URL om te zien of we hem moeten tonen
+                    toggleViews();
                 }
             })
             .catch(err => console.error('Failed to load downloads page:', err));
@@ -94,7 +110,6 @@
 
         const allLinks = drawerScroll.querySelectorAll('a');
         let anchorLink = null;
-
         for (let i = 0; i < allLinks.length; i++) {
             const text = (allLinks[i].textContent || '').trim().toLowerCase();
             if (text.includes('movie') || text.includes('film') || text.includes('lib')) {
@@ -104,16 +119,17 @@
 
         const navItem = document.createElement('a');
         navItem.id = 'nav-downloadmonitor';
-        navItem.href = '#';
+        navItem.href = '#!/home.html?view=downloadmonitor';
         navItem.className = anchorLink ? anchorLink.className : 'navMenuOption navMenuOption-withIcon';
 
         navItem.addEventListener('click', function(e) {
             e.preventDefault();
-            loadDownloadsPage();
+            closeDrawer();
+            window.location.hash = '#!/home.html?view=downloadmonitor';
         });
 
         navItem.innerHTML = `
-            <span class="material-icons navMenuOption-icon">download</span>
+            <span class="material-icons navMenuOption-icon" style="margin-right: 1em;">download</span>
             <span class="navMenuOptionText">Downloads</span>
         `;
 
@@ -127,21 +143,20 @@
 
     // --- EVENT LISTENERS ---
 
-    document.addEventListener('viewshow', function(e) {
-        const target = e.target;
-        if (target && target.id !== 'downloadMonitorPage') {
-            const myPage = document.getElementById('downloadMonitorPage');
-            if (myPage) myPage.style.display = 'none';
+    window.addEventListener('hashchange', toggleViews);
 
-            // Dit repareert nu de 'dubbele' weergave
-            restoreJellyfinViews();
-        }
+    document.addEventListener('viewshow', function() {
+        setTimeout(toggleViews, 50);
         setTimeout(addDownloadsMenuItem, 200);
     });
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', addDownloadsMenuItem);
+        document.addEventListener('DOMContentLoaded', () => {
+            addDownloadsMenuItem();
+            toggleViews();
+        });
     } else {
         addDownloadsMenuItem();
+        toggleViews();
     }
 })();

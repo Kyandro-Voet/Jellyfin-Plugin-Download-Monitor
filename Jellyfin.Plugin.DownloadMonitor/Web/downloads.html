@@ -1,15 +1,12 @@
 <div id="downloadMonitorPage" data-role="page" class="page libraryPage type-interior pluginConfigurationPage mainAnimatedPage">
 
     <div class="padded-top-page padded-left padded-right padded-bottom-page">
+        <div class="verminderBreedte">
 
         <div class="flex align-items-center justify-content-between" style="margin-bottom: 2em;">
-            <h1 class="pageTitle" style="margin: 0;">
+            <h1 class="pageTitle" style="margin: auto;">
                 Downloads
             </h1>
-
-            <button is="paper-icon-button-light" class="emby-button" type="button" onclick="this.dispatchEvent(new CustomEvent('refresh-downloads', {bubbles: true}))" title="Refresh">
-                <span class="material-icons refresh" aria-hidden="true">refresh</span>
-            </button>
         </div>
 
         <div id="download-list-container" class="itemsContainer vertical-list">
@@ -17,10 +14,15 @@
                 <span class="material-icons" style="font-size: 2em; animation: spin 1s linear infinite;">sync</span>
             </div>
         </div>
+        </div>
 
     </div>
 
     <style>
+        .verminderBreedte {
+            max-width: 60%;
+            margin: 0 auto;
+        }
         .download-progress-background {
             background-color: rgba(255, 255, 255, 0.1);
             height: 4px;
