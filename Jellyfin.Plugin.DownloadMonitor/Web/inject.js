@@ -9,6 +9,57 @@
         return window.location.hash.includes('view=downloadmonitor');
     }
 
+    // --- HELPER 1.5: Update Sidebar Highlight State ---
+    let sidebarObserver = null;
+
+    function updateSidebarHighlight() {
+        const navItem = document.getElementById('nav-downloadmonitor');
+        if (!navItem) return;
+
+        const sidebar = navItem.closest('.libraryMenuOptions') || document.querySelector('.libraryMenuOptions');
+        if (!sidebar) return;
+
+        const allNavItems = sidebar.querySelectorAll('.navMenuOption');
+
+        if (isDownloadPage()) {
+            allNavItems.forEach(item => {
+                if (item === navItem) {
+                    item.classList.add('navMenuOption-selected');
+                } else {
+                    item.classList.remove('navMenuOption-selected');
+                }
+            });
+        } else {
+            navItem.classList.remove('navMenuOption-selected');
+        }
+    }
+
+    function startSidebarObserver() {
+        if (sidebarObserver) {
+            sidebarObserver.disconnect();
+        }
+        const target = document.querySelector('.libraryMenuOptions');
+        if (!target) return;
+
+        sidebarObserver = new MutationObserver((mutations) => {
+            sidebarObserver.disconnect();
+            updateSidebarHighlight();
+            sidebarObserver.observe(target, {
+                attributes: true,
+                childList: true,
+                subtree: true,
+                attributeFilter: ['class']
+            });
+        });
+
+        sidebarObserver.observe(target, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+            attributeFilter: ['class']
+        });
+    }
+
     // --- HELPER 2: Sluit het menu ---
     function closeDrawer() {
         const backdrop = document.querySelector('.mainDrawer-backdrop');
@@ -66,6 +117,8 @@
                 }
             });
         }
+
+        updateSidebarHighlight();
     }
 
     function loadDownloadsHtml(container) {
@@ -137,6 +190,8 @@
             const parent = drawerScroll.querySelector('.libraryMenuOptions') || drawerScroll;
             parent.appendChild(navItem);
 
+            updateSidebarHighlight();
+            startSidebarObserver();
     }
 
     // --- EVENT LISTENERS ---
