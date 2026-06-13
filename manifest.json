@@ -8,6 +8,14 @@
         "category": "General",
         "versions": [
             {
+                "version": "0.2.3.0",
+                "changelog": "See GitHub Releases for changes in v0.2.3.0",
+                "targetAbi": "10.11.0.0",
+                "sourceUrl": "https://kyandro-voet.github.io/Jellyfin-Plugin-Download-Monitor/download-monitor/download-monitor_0.2.3.0.zip",
+                "checksum": "129031f3e9244226866fe7b000939d4e",
+                "timestamp": "2026-06-13T20:52:35Z"
+            },
+            {
                 "version": "0.2.2.0",
                 "changelog": "See GitHub Releases for changes in v0.2.2.0",
                 "targetAbi": "10.11.0.0",
