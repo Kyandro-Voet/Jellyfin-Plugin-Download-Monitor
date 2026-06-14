@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
@@ -112,6 +113,7 @@ namespace Jellyfin.Plugin.DownloadMonitor.Controllers
             }
 
             var combinedRecords = new JsonArray();
+            var seenDownloadIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             // Fetch Radarr downloads
             if (hasRadarr)
@@ -146,6 +148,17 @@ namespace Jellyfin.Plugin.DownloadMonitor.Controllers
                                     var recordCopy = JsonNode.Parse(record.ToJsonString());
                                     if (recordCopy != null)
                                     {
+                                        var downloadId = recordCopy["downloadId"]?.ToString();
+                                        if (!string.IsNullOrEmpty(downloadId))
+                                        {
+                                            if (seenDownloadIds.Contains(downloadId))
+                                            {
+                                                continue;
+                                            }
+
+                                            seenDownloadIds.Add(downloadId);
+                                        }
+
                                         recordCopy["mediaType"] = "movie";
                                         combinedRecords.Add(recordCopy);
                                     }
@@ -193,6 +206,17 @@ namespace Jellyfin.Plugin.DownloadMonitor.Controllers
                                     var recordCopy = JsonNode.Parse(record.ToJsonString());
                                     if (recordCopy != null)
                                     {
+                                        var downloadId = recordCopy["downloadId"]?.ToString();
+                                        if (!string.IsNullOrEmpty(downloadId))
+                                        {
+                                            if (seenDownloadIds.Contains(downloadId))
+                                            {
+                                                continue;
+                                            }
+
+                                            seenDownloadIds.Add(downloadId);
+                                        }
+
                                         recordCopy["mediaType"] = "series";
                                         combinedRecords.Add(recordCopy);
                                     }

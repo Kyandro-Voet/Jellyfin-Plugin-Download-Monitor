@@ -96,14 +96,37 @@
                 }
 
                 const sortedItems = items.map(item => {
-                    const title = item.title || "Unknown";
+                    let displayName = item.title || "Unknown";
+
+                    if (item.mediaType === 'movie' && item.movie) {
+                        const movieTitle = item.movie.title;
+                        const movieYear = item.movie.year;
+                        displayName = movieTitle ? (movieYear ? `${movieTitle} (${movieYear})` : movieTitle) : displayName;
+                    } else if (item.mediaType === 'series' && item.series) {
+                        const seriesTitle = item.series.title;
+                        let seasonNum = null;
+                        if (item.episode && typeof item.episode.seasonNumber === 'number') {
+                            seasonNum = item.episode.seasonNumber;
+                        }
+
+                        if (seriesTitle) {
+                            if (seasonNum !== null && seasonNum !== undefined) {
+                                displayName = `${seriesTitle} - Season ${seasonNum}`;
+                            } else {
+                                displayName = seriesTitle;
+                            }
+                        }
+                    }
+
                     const status = item.status || "Unknown";
                     const total = Number(item.size) || 0;
                     const left = Number(item.sizeleft) || 0;
 
+                    item.displayName = displayName;
                     item.progress = total > 0 ? Math.round(((total - left) / total) * 100) : 0;
-                    if(total === 0)
-                        progress = 0;
+                    if (total === 0) {
+                        item.progress = 0;
+                    }
                     return item;
 
                 }).sort((a, b) => b.progress - a.progress);
@@ -114,7 +137,7 @@
                         <div class="listItem listItem-border" style="display: flex; align-items: center; gap: 1.2em; padding: 1em 0.5em;">
                             <span class="material-icons" style="font-size: 24px; color: var(--theme-text-secondary-color, #ccc); flex-shrink: 0;">${iconName}</span>
                             <div class="listItemBody" style="flex: 1; margin: 0; padding: 0;">
-                                <div class="listItemBodyText">${item.title}</div>
+                                <div class="listItemBodyText">${item.displayName}</div>
                                 <div class="listItemBodyText secondary" style="display: flex; align-items: center; gap: 0.5em; margin-top: 2px;">
                                     <span>${item.status || "Unknown"}</span>
                                     <span>&bull;</span>
