@@ -109,14 +109,18 @@
                 }).sort((a, b) => b.progress - a.progress);
 
                 const html = sortedItems.map(item => {
+                    const iconName = item.mediaType === 'series' ? 'tv' : 'movie';
                     return `
-                        <div class="listItem listItem-border">
-                            <div class="listItemBody">
+                        <div class="listItem listItem-border" style="display: flex; align-items: center; gap: 1.2em; padding: 1em 0.5em;">
+                            <span class="material-icons" style="font-size: 24px; color: var(--theme-text-secondary-color, #ccc); flex-shrink: 0;">${iconName}</span>
+                            <div class="listItemBody" style="flex: 1; margin: 0; padding: 0;">
                                 <div class="listItemBodyText">${item.title}</div>
-                                <div class="listItemBodyText secondary">
-                                    ${item.status || "Unknown"} &bull; ${item.progress}%
+                                <div class="listItemBodyText secondary" style="display: flex; align-items: center; gap: 0.5em; margin-top: 2px;">
+                                    <span>${item.status || "Unknown"}</span>
+                                    <span>&bull;</span>
+                                    <span>${item.progress}%</span>
                                 </div>
-                                <div class="download-progress-background">
+                                <div class="download-progress-background" style="margin-top: 8px;">
                                     <div class="download-progress-value" style="width: ${item.progress}%"></div>
                                 </div>
                             </div>

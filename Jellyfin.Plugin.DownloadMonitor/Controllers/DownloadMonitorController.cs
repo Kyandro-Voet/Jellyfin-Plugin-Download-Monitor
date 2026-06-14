@@ -90,7 +90,7 @@ namespace Jellyfin.Plugin.DownloadMonitor.Controllers
         }
 
         /// <summary>
-        /// Gets current download status from Radarr.
+        /// Gets current download status from Radarr and Sonarr.
         /// </summary>
         /// <returns>JSON array of download items.</returns>
         [HttpGet("Plugins/DownloadMonitor/Downloads")]
@@ -98,55 +98,122 @@ namespace Jellyfin.Plugin.DownloadMonitor.Controllers
         public async Task<ActionResult> GetDownloads()
         {
             var config = Plugin.Instance?.Configuration;
-            if (config == null || string.IsNullOrEmpty(config.RadarrUrl) || string.IsNullOrEmpty(config.RadarrApiKey))
+            if (config == null)
             {
                 return Ok(new { records = Array.Empty<object>() });
             }
 
-            var commandUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/command?apikey={config.RadarrApiKey}";
-            try
+            var hasRadarr = !string.IsNullOrEmpty(config.RadarrUrl) && !string.IsNullOrEmpty(config.RadarrApiKey);
+            var hasSonarr = !string.IsNullOrEmpty(config.SonarrUrl) && !string.IsNullOrEmpty(config.SonarrApiKey);
+
+            if (!hasRadarr && !hasSonarr)
             {
-                var commandJson = "{\"name\":\"RefreshMonitoredDownloads\"}";
-                var content = new StringContent(commandJson, Encoding.UTF8, "application/json");
-                await HttpClient.PostAsync(commandUrl, content).ConfigureAwait(false);
-            }
-            catch (Exception)
-            {
+                return Ok(new { records = Array.Empty<object>(), refreshInterval = config.RefreshInterval * 1000 });
             }
 
-            var requestUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/queue?apikey={config.RadarrApiKey}";
+            var combinedRecords = new JsonArray();
 
-            try
+            // Fetch Radarr downloads
+            if (hasRadarr)
             {
-                var response = await HttpClient.GetAsync(requestUrl).ConfigureAwait(false);
-                if (response.IsSuccessStatusCode)
+                var commandUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/command?apikey={config.RadarrApiKey}";
+                try
                 {
-                    var jsonString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-                    try
-                    {
-                        var node = JsonNode.Parse(jsonString);
-                        if (node != null)
-                        {
-                            // Inject refresh interval in milliseconds
-                            node["refreshInterval"] = config.RefreshInterval * 1000;
-                            return Content(node.ToJsonString(), "application/json");
-                        }
-                    }
-                    catch
-                    {
-                        // Ignore parsing errors and return original JSON
-                    }
-
-                    return Content(jsonString, "application/json");
+                    var commandJson = "{\"name\":\"RefreshMonitoredDownloads\"}";
+                    var content = new StringContent(commandJson, Encoding.UTF8, "application/json");
+                    await HttpClient.PostAsync(commandUrl, content).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // Ignore command trigger failure
                 }
 
-                return StatusCode((int)response.StatusCode);
+                var requestUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/queue?apikey={config.RadarrApiKey}";
+                try
+                {
+                    var response = await HttpClient.GetAsync(requestUrl).ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var jsonString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var node = JsonNode.Parse(jsonString);
+                        var records = node?["records"]?.AsArray();
+                        if (records != null)
+                        {
+                            foreach (var record in records)
+                            {
+                                if (record != null)
+                                {
+                                    var recordCopy = JsonNode.Parse(record.ToJsonString());
+                                    if (recordCopy != null)
+                                    {
+                                        recordCopy["mediaType"] = "movie";
+                                        combinedRecords.Add(recordCopy);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore Radarr fetch failures so Sonarr can still show
+                }
             }
-            catch (Exception ex)
+
+            // Fetch Sonarr downloads
+            if (hasSonarr)
             {
-                return StatusCode(500, new { error = ex.Message });
+                var commandUrl = $"{config.SonarrUrl.TrimEnd('/')}/api/v3/command?apikey={config.SonarrApiKey}";
+                try
+                {
+                    var commandJson = "{\"name\":\"RefreshMonitoredDownloads\"}";
+                    var content = new StringContent(commandJson, Encoding.UTF8, "application/json");
+                    await HttpClient.PostAsync(commandUrl, content).ConfigureAwait(false);
+                }
+                catch (Exception)
+                {
+                    // Ignore command trigger failure
+                }
+
+                var requestUrl = $"{config.SonarrUrl.TrimEnd('/')}/api/v3/queue?apikey={config.SonarrApiKey}";
+                try
+                {
+                    var response = await HttpClient.GetAsync(requestUrl).ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var jsonString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var node = JsonNode.Parse(jsonString);
+                        var records = node?["records"]?.AsArray();
+                        if (records != null)
+                        {
+                            foreach (var record in records)
+                            {
+                                if (record != null)
+                                {
+                                    var recordCopy = JsonNode.Parse(record.ToJsonString());
+                                    if (recordCopy != null)
+                                    {
+                                        recordCopy["mediaType"] = "series";
+                                        combinedRecords.Add(recordCopy);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    // Ignore Sonarr fetch failures so Radarr can still show
+                }
             }
+
+            var result = new JsonObject
+            {
+                ["records"] = combinedRecords,
+                ["refreshInterval"] = config.RefreshInterval * 1000
+            };
+
+            return Content(result.ToJsonString(), "application/json");
         }
     }
 }

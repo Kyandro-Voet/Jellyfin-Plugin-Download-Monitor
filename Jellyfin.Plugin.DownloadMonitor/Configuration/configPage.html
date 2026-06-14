@@ -58,16 +58,29 @@
 
                 <form id="downloadMonitorConfigForm">
 
+                    <h3 style="margin-top: 1.5em; color: #00a4dc;">Radarr (Movies)</h3>
                     <div class="inputContainer">
-                        <input is="emby-input" type="text" id="RadarrUrl" label="Radarr URL" required />
+                        <input is="emby-input" type="text" id="RadarrUrl" label="Radarr URL" />
                         <div class="fieldDescription">E.g.: http://192.168.1.50:7878</div>
                     </div>
 
                     <div class="inputContainer">
-                        <input is="emby-input" type="text" id="RadarrApiKey" label="Radarr API Key" required />
+                        <input is="emby-input" type="text" id="RadarrApiKey" label="Radarr API Key" />
                         <div class="fieldDescription">You can find this in Radarr under Settings > General.</div>
                     </div>
 
+                    <h3 style="margin-top: 1.5em; color: #00a4dc;">Sonarr (Series)</h3>
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="SonarrUrl" label="Sonarr URL" />
+                        <div class="fieldDescription">E.g.: http://192.168.1.50:8989</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <input is="emby-input" type="text" id="SonarrApiKey" label="Sonarr API Key" />
+                        <div class="fieldDescription">You can find this in Sonarr under Settings > General.</div>
+                    </div>
+
+                    <h3 style="margin-top: 1.5em; color: #00a4dc;">General Settings</h3>
                     <div class="inputContainer">
                         <input is="emby-input" type="number" id="RefreshInterval" label="Update Interval (seconds)" min="1" />
                     </div>
@@ -88,6 +101,8 @@
                 var config = {
                     RadarrUrl: document.querySelector('#RadarrUrl').value,
                     RadarrApiKey: document.querySelector('#RadarrApiKey').value,
+                    SonarrUrl: document.querySelector('#SonarrUrl').value,
+                    SonarrApiKey: document.querySelector('#SonarrApiKey').value,
                     RefreshInterval: parseInt(document.querySelector('#RefreshInterval').value)
                 };
 
@@ -101,10 +116,14 @@
                 ApiClient.getPluginConfiguration(pluginId).then(function (config) {
                     var radarrUrl = document.querySelector('#RadarrUrl');
                     var radarrApiKey = document.querySelector('#RadarrApiKey');
+                    var sonarrUrl = document.querySelector('#SonarrUrl');
+                    var sonarrApiKey = document.querySelector('#SonarrApiKey');
                     var refreshInterval = document.querySelector('#RefreshInterval');
 
                     if (radarrUrl) radarrUrl.value = config.RadarrUrl || "";
                     if (radarrApiKey) radarrApiKey.value = config.RadarrApiKey || "";
+                    if (sonarrUrl) sonarrUrl.value = config.SonarrUrl || "";
+                    if (sonarrApiKey) sonarrApiKey.value = config.SonarrApiKey || "";
                     if (refreshInterval) refreshInterval.value = config.RefreshInterval || "2";
                 }).catch(function(err) {
                     console.log('Error loading config:', err);

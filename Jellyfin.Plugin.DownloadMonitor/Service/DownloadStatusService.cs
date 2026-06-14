@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json.Nodes;
 using System.Threading;
 using System.Threading.Tasks;
 using Jellyfin.Plugin.DownloadMonitor.Helpers;
@@ -167,7 +168,15 @@ namespace Jellyfin.Plugin.DownloadMonitor.Service
         private async Task CheckDownloads()
         {
             var config = Plugin.Instance?.Configuration;
-            if (config == null || string.IsNullOrEmpty(config.RadarrUrl) || string.IsNullOrEmpty(config.RadarrApiKey))
+            if (config == null)
+            {
+                return;
+            }
+
+            var hasRadarr = !string.IsNullOrEmpty(config.RadarrUrl) && !string.IsNullOrEmpty(config.RadarrApiKey);
+            var hasSonarr = !string.IsNullOrEmpty(config.SonarrUrl) && !string.IsNullOrEmpty(config.SonarrApiKey);
+
+            if (!hasRadarr && !hasSonarr)
             {
                 return;
             }
@@ -178,32 +187,96 @@ namespace Jellyfin.Plugin.DownloadMonitor.Service
                 _timer.Change(TimeSpan.FromSeconds(config.RefreshInterval), TimeSpan.FromSeconds(config.RefreshInterval));
             }
 
-            var requestUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/queue?apikey={config.RadarrApiKey}";
+            var combinedRecords = new JsonArray();
 
-            try
+            // Fetch Radarr downloads
+            if (hasRadarr)
             {
-                var response = await _httpClient.GetAsync(requestUrl).ConfigureAwait(false);
-                if (response.IsSuccessStatusCode)
+                var requestUrl = $"{config.RadarrUrl.TrimEnd('/')}/api/v3/queue?apikey={config.RadarrApiKey}";
+                try
                 {
-                    var jsonString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-                    // Only send WebSocket message if data has actually changed
-                    // This prevents spam and reduces KeepAlive message frequency
-                    if (!string.IsNullOrWhiteSpace(jsonString) && jsonString != _lastDataSent)
+                    var response = await _httpClient.GetAsync(requestUrl).ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode)
                     {
-                        _lastDataSent = jsonString;
-
-                        // Send raw Radarr JSON to the frontend via WebSocket
-                        await _sessionManager.SendMessageToAdminSessions(
-                            MediaBrowser.Model.Session.SessionMessageType.UserDataChanged,
-                            new { MessageType = "DownloadStatusUpdate", Provider = "Radarr", Data = jsonString },
-                            cancellationToken: default).ConfigureAwait(false);
+                        var jsonString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var node = JsonNode.Parse(jsonString);
+                        var records = node?["records"]?.AsArray();
+                        if (records != null)
+                        {
+                            foreach (var record in records)
+                            {
+                                if (record != null)
+                                {
+                                    var recordCopy = JsonNode.Parse(record.ToJsonString());
+                                    if (recordCopy != null)
+                                    {
+                                        recordCopy["mediaType"] = "movie";
+                                        combinedRecords.Add(recordCopy);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Could not reach Radarr in background service: {Message}", ex.Message);
+                }
             }
-            catch (Exception ex)
+
+            // Fetch Sonarr downloads
+            if (hasSonarr)
             {
-                _logger.LogError(ex, "Could not reach Radarr: {Message}", ex.Message);
+                var requestUrl = $"{config.SonarrUrl.TrimEnd('/')}/api/v3/queue?apikey={config.SonarrApiKey}";
+                try
+                {
+                    var response = await _httpClient.GetAsync(requestUrl).ConfigureAwait(false);
+                    if (response.IsSuccessStatusCode)
+                    {
+                        var jsonString = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        var node = JsonNode.Parse(jsonString);
+                        var records = node?["records"]?.AsArray();
+                        if (records != null)
+                        {
+                            foreach (var record in records)
+                            {
+                                if (record != null)
+                                {
+                                    var recordCopy = JsonNode.Parse(record.ToJsonString());
+                                    if (recordCopy != null)
+                                    {
+                                        recordCopy["mediaType"] = "series";
+                                        combinedRecords.Add(recordCopy);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Could not reach Sonarr in background service: {Message}", ex.Message);
+                }
+            }
+
+            var resultObject = new JsonObject
+            {
+                ["records"] = combinedRecords
+            };
+
+            var jsonStringToSend = resultObject.ToJsonString();
+
+            // Only send WebSocket message if data has actually changed
+            // This prevents spam and reduces KeepAlive message frequency
+            if (!string.IsNullOrWhiteSpace(jsonStringToSend) && jsonStringToSend != _lastDataSent)
+            {
+                _lastDataSent = jsonStringToSend;
+
+                // Send combined JSON to the frontend via WebSocket
+                await _sessionManager.SendMessageToAdminSessions(
+                    MediaBrowser.Model.Session.SessionMessageType.UserDataChanged,
+                    new { MessageType = "DownloadStatusUpdate", Provider = "Combined", Data = jsonStringToSend },
+                    cancellationToken: default).ConfigureAwait(false);
             }
         }
 
